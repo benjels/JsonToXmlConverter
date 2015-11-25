@@ -1,5 +1,6 @@
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -74,28 +75,86 @@ public class JSONToXMLConverter {
 			}
 			Path pathToFile = (Path)arg0;
 			if(pathToFile.toString().substring(pathToFile.toString().length() - 5, pathToFile.toString().length()).equals(".json")){
-				//so we have encountered a file that is purportedly .json, we should attempt to produce an xml file from it
-		//	try{
-				convertToXml(pathToFile);
-		/*	}catch(IOException e){ THIS IS COMMENTED OUT BECAUSE WE ARE TRYING TO FIGURE OUT WHY WRITING THE XML STRING THROW EXCEPTION
-				System.out.println("attempted to convert the following file to XML and incurred an io exception: " + pathToFile);
-				e.printStackTrace();
-			}*/
+				//so we have encountered a file that is purportedly .json, we should attempt to produce an xml file from each of the json objects that it contains
+		//	try{ //THIS IS COMMENTED OUT TO FIX BUGS WITH MALFORMED FILES
+				//convertToXml(pathToFile);
+				//split the json file with several json article objects inside into several json objects. One for each "article"
+				ArrayList<JSONObject> JSONObjects = separateJSONObjectsInFile(pathToFile);
+				//for each of these JSONObjects, create an individual JSON file for it, and then create an XML file of that.
+				for(JSONObject each: JSONObjects){
+					//create the JSON file
+					createJSONFileFromJSONObject(each, pathToFile);
+					//create the XML file
+					createXMLFileFromJSONObject(each, pathToFile);
+				}
+		//	}catch(IOException e){ 
+		//		System.out.println("attempted to convert the following file to XML and incurred an io exception: " + pathToFile);
+		//		e.printStackTrace();
+		//	}
 			}else{
-				//System.out.println("non json file encountered: " + arg0);
+			//	System.out.println("non json file encountered: " + arg0);
 			}
 			return java.nio.file.FileVisitResult.CONTINUE;
 		}
 
-		//TODO: at the moment this method only hackily checks that the xml string that we will be saving to file is "well formed" by relying upon the call to XML.toString to throw the JSONException (presumably... havent even looked at code). 
+
+		/**
+		 * takes a json file that has several json objects defined within and returns a list of those json objects
+		 * @param pathToFile the path to the file that is to be separated into its constituent json objects
+		 * @return ArrayList<JSONObject> a list of all of the JSONObjects that are defined in the supplied file
+		 * @throws IOException 
+		 */
+		private ArrayList<JSONObject> separateJSONObjectsInFile(Path pathToFile) throws IOException {
+			
+			//System.out.println("about to separate the file: " + pathToFile.toString());
+
+			ArrayList<String> listOfJSONStrings = (ArrayList<String>) Files.readAllLines(pathToFile, Charset.availableCharsets().get("ISO-8859-1"));
+			ArrayList<JSONObject> listOfJSONObjects = new ArrayList<>();
+			for(String each: listOfJSONStrings){
+				listOfJSONObjects.add(new JSONObject(each));
+			}
+		//	System.out.println("separated successfully");
+			return listOfJSONObjects;
+		}
+
+		/**
+		 * creates a JSONFile at the specified location
+		 * @param JSONObject the JSONObject to create a file of
+		 * @param pathToOriginalFile the location that we are creating the file in
+		 * @return File the .json file created
+		 * @throws IOException 
+		 */
+		private void createJSONFileFromJSONObject(JSONObject JSONObj, Path pathToOriginalFile) throws IOException {
+			File JSONFile = new File(pathToOriginalFile.getParent().toString() + "\\splitJson" + JSONObj.hashCode() + ".json"); //TODO: should query the actual JSON object with the "article name" key or something to get the actual name of the article to name the file
+			java.io.FileWriter writer = new java.io.FileWriter(JSONFile);
+			writer.write(JSONObj.toString());
+			writer.close();
+		}
 		
 		/**
+		 * creates an XMLFile at the specified location
+		 * @param JSONObj the JSONObject that we are "converting" into an xml file
+		 * @param pathToOriginalFile the location that we are creating the file in
+		 * @throws IOException 
+		 */
+		private void createXMLFileFromJSONObject(JSONObject JSONObj,
+				Path pathToOriginalFile) throws IOException {
+			File XMLFile = new File(pathToOriginalFile.getParent().toString()  + "\\splitXML" + JSONObj.hashCode() + ".xml"); //TODO: should query the actual JSON object with the "article name" key or something to get the actual name of the article to name the file
+			java.io.FileWriter writer = new java.io.FileWriter(XMLFile);
+			writer.write(XML.toString(JSONObj, "root")); //note: using "root" as the enclosing json tags. This seems conventional.
+			writer.close();
+		}
+		
+		
+		
+/*		//TODO: at the moment this method only hackily checks that the xml string that we will be saving to file is "well formed" by relying upon the call to XML.toString to throw the JSONException (presumably... havent even looked at code). 
+		*//**
 		 * attempts to create an xml version of a file that is purported to be in the .json format.
 		 * This method will be attempted with every file that is in the directory tree of whatever our start point directory is.
 		 * For now, it does not handle poorly formed json gracefully, will throw a runtime exception.
 		 * @param pathToFile the path of the json file that is to be converted
-		 */
-		private void convertToXml(Path pathToFile) throws IOException {
+		 *//*
+		private void convertToXML(Path pathToFile) throws IOException {
 			//System.out.println("about to convert this file to xml : " + pathToFile);
 			
 			//read all of the text from the json file into a string
@@ -104,21 +163,21 @@ public class JSONToXMLConverter {
 			for(String each: listOfLines){
 				entireFileText += each;
 			}
-			
+			//> at this point we have a full string with all 10 articles or watev at entireFileText
 			//use the text we read in to create an XML string
-			//System.out.println("about to create an xml string with the string: " + entireFileText);
-			String XMLText = XML.toString(new JSONObject(entireFileText), "root");
-				
+			JSONObject jsonFileText = new JSONObject(entireFileText);
+			String XMLText = XML.toString(new JSONObject(jsonFileText), "root");
+			//> at this point the string at XMLTest only has the first json object as an xml compliant string
 			//write that XML string back into another file
 			//System.out.println("about to write the follwing xml string to a file: " + XMLText);
 			//System.out.println("parent path (which is where we will create the xml from the json) is: " + pathToFile.getParent().toString());
-			File XMLFile = new File(pathToFile.getParent().toString() + "\\xmlVersionWithRoot.xml");
+			File XMLFile = new File(pathToFile.getParent().toString() + "\\xmlVersionWithRoot" + Math.random() + ".xml"); //TODO: the mathrandom here is just to differentiate the diff files that will be put into the same directory. ultimately 
 			//System.out.println(XMLFile);
 			java.io.FileWriter writer = new java.io.FileWriter(XMLFile); //this should just be whatever the title of the .json was
 			writer.write(XMLText);
 			writer.close();
 	
-		}
+		}*/
 		
 
 		//BARELY TOUCHED INTERFACE REQUIRED METHODS/////////

@@ -13,19 +13,18 @@ import org.json.*;
 
 
 /**
- * at this stage the entire program will basically be a simple script that runs in this class, 
- * traversing the json files and creating a corresponding xml file for each one.
+ *Basically a script that sets the FileVisitor off on its journey
  * @author max
  *
  */
 public class JSONToXMLConverter {
 
-	
 	public static void main(String[] args){
-
 		doFileWalk(new XmlConverterVisitor());//create the walker that will explore the tree of our json files
 	}
 
+	
+	
 	//TODO: ultimately add the starting directory as a prompted string input from the user but for now we sjust hardcode it
 	/**
 	 * takes a walker and a starting directory and recursively traverses the tree of child directories, converting
@@ -43,7 +42,7 @@ public class JSONToXMLConverter {
 			System.out.println("starting walk of file tree...");
 			Files.walkFileTree(initPath, fileVisitor);
 		} catch (IOException e) {
-			System.out.println("IO EXCEPTION INCURRED STARTING THE VISITOR'S WALK");
+			System.out.println("IO EXCEPTION INCURRED DURING THE VISITOR'S WALK");
 			e.printStackTrace();
 		}finally{
 			System.out.println("finished walking file tree after approx " + ((System.currentTimeMillis() - startTime)/1000)  + " seconds : )" );
@@ -54,26 +53,15 @@ public class JSONToXMLConverter {
 	
 	
 	
-	
+	/**
+	 * explores the specified directory and all descendant directories. Does a depth first search but that order that children are chosen to be traversed is not defined. SHouldn't matter here.
+	 * @author max
+	 *
+	 */
 	private static class XmlConverterVisitor implements FileVisitor{
 
 		
-		//INTERFACE BEHAVIOUR METHODS////////////////////////////////////////
 		
-		@Override
-		public FileVisitResult postVisitDirectory(Object arg0, IOException arg1)
-				throws IOException {
-			//System.out.println("just visited a directory with properties: " + arg0 + " " + arg1);
-			return java.nio.file.FileVisitResult.CONTINUE;
-		}
-
-		@Override
-		public FileVisitResult preVisitDirectory(Object arg0,
-				BasicFileAttributes arg1) throws IOException {
-			//System.out.println("previsiting a directory with properties: " + arg0 + " " + arg1);
-			return java.nio.file.FileVisitResult.CONTINUE;
-		}
-
 		@Override
 		public FileVisitResult visitFile(Object arg0, BasicFileAttributes arg1)
 				throws IOException {
@@ -99,13 +87,6 @@ public class JSONToXMLConverter {
 			return java.nio.file.FileVisitResult.CONTINUE;
 		}
 
-		@Override
-		public FileVisitResult visitFileFailed(Object arg0, IOException arg1)
-				throws IOException {
-			throw new RuntimeException("the operation is not catered for atm but it should be fam");
-		}
-		/////////////////////////////////////////////////////////////////////
-		
 		//TODO: at the moment this method only hackily checks that the xml string that we will be saving to file is "well formed" by relying upon the call to XML.toString to throw the JSONException (presumably... havent even looked at code). 
 		
 		/**
@@ -139,5 +120,27 @@ public class JSONToXMLConverter {
 	
 		}
 		
+
+		//BARELY TOUCHED INTERFACE REQUIRED METHODS/////////
+		
+		@Override
+		public FileVisitResult postVisitDirectory(Object arg0, IOException arg1)
+				throws IOException {
+			return java.nio.file.FileVisitResult.CONTINUE;
+		}
+
+		@Override
+		public FileVisitResult preVisitDirectory(Object arg0,
+				BasicFileAttributes arg1) throws IOException {
+			return java.nio.file.FileVisitResult.CONTINUE;
+		}
+
+		@Override
+		public FileVisitResult visitFileFailed(Object arg0, IOException arg1)
+				throws IOException {
+			throw new IOException();
+		}
+		
+		////////////////////////////////////////
 	}
 }

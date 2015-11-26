@@ -19,6 +19,8 @@ import org.json.*;
  *
  */
 public class JSONToXMLConverter {
+	
+	private static final String START_DIRECTORY = "C:\\!2015SCHOLARSHIPSTUFF\\CompleteSampleCopy";
 
 	public static void main(String[] args){
 		doFileWalk(new XmlConverterVisitor());//create the walker that will explore the tree of our json files
@@ -37,7 +39,7 @@ public class JSONToXMLConverter {
 	private static void doFileWalk(FileVisitor fileVisitor) {
 		//start the file visitor on its journey
 		//hardcode the start point path !!!
-		Path initPath = FileSystems.getDefault().getPath("C:\\!2015SCHOLARSHIT\\tinyTasmaniaDataSample");
+		Path initPath = FileSystems.getDefault().getPath(START_DIRECTORY);
 		long startTime = System.currentTimeMillis();
 		try {
 			System.out.println("starting walk of file tree...");
@@ -125,11 +127,19 @@ public class JSONToXMLConverter {
 		 * @throws IOException 
 		 */
 		private void createJSONFileFromJSONObject(JSONObject JSONObj, Path pathToOriginalFile) throws IOException {
-			File JSONFile = new File(pathToOriginalFile.getParent().toString() + "\\splitJson" + JSONObj.hashCode() + ".json"); //TODO: should query the actual JSON object with the "article name" key or something to get the actual name of the article to name the file
+			String fileName = pathToOriginalFile.getParent().toString() + "\\" + sanitiseFileName(JSONObj.getString("heading"));
+			//if the file is an "Advertising article", then we need to add additional info to the file title to differentiate it from the other advertisments in this issue
+			if(JSONObj.getString("heading").equals("Advertising")){
+				fileName += JSONObj.getString("id");
+			}
+			//attach the file suffix
+			fileName += ".json";
+			File JSONFile = new File(fileName);
 			java.io.FileWriter writer = new java.io.FileWriter(JSONFile);
 			writer.write(JSONObj.toString());
 			writer.close();
 		}
+		
 		
 		/**
 		 * creates an XMLFile at the specified location
@@ -137,47 +147,37 @@ public class JSONToXMLConverter {
 		 * @param pathToOriginalFile the location that we are creating the file in
 		 * @throws IOException 
 		 */
-		private void createXMLFileFromJSONObject(JSONObject JSONObj,
-				Path pathToOriginalFile) throws IOException {
-			File XMLFile = new File(pathToOriginalFile.getParent().toString()  + "\\splitXML" + JSONObj.hashCode() + ".xml"); //TODO: should query the actual JSON object with the "article name" key or something to get the actual name of the article to name the file
+		private void createXMLFileFromJSONObject(JSONObject JSONObj, Path pathToOriginalFile) throws IOException {
+			String fileName = pathToOriginalFile.getParent().toString() + "\\" + sanitiseFileName(JSONObj.getString("heading"));
+			//if the file is an "Advertising article", then we need to add additional info to the file title to differentiate it from the other advertisments in this issue
+			if(JSONObj.getString("heading").equals("Advertising")){
+				fileName += JSONObj.getString("id");
+			}
+			//attach the file suffix
+			fileName += ".xml";
+			File XMLFile = new File(fileName);
 			java.io.FileWriter writer = new java.io.FileWriter(XMLFile);
 			writer.write(XML.toString(JSONObj, "root")); //note: using "root" as the enclosing json tags. This seems conventional.
 			writer.close();
 		}
 		
-		
-		
-/*		//TODO: at the moment this method only hackily checks that the xml string that we will be saving to file is "well formed" by relying upon the call to XML.toString to throw the JSONException (presumably... havent even looked at code). 
-		*//**
-		 * attempts to create an xml version of a file that is purported to be in the .json format.
-		 * This method will be attempted with every file that is in the directory tree of whatever our start point directory is.
-		 * For now, it does not handle poorly formed json gracefully, will throw a runtime exception.
-		 * @param pathToFile the path of the json file that is to be converted
-		 *//*
-		private void convertToXML(Path pathToFile) throws IOException {
-			//System.out.println("about to convert this file to xml : " + pathToFile);
-			
-			//read all of the text from the json file into a string
-			ArrayList<String> listOfLines = (ArrayList<String>) Files.readAllLines(pathToFile);
-			String entireFileText = "";
-			for(String each: listOfLines){
-				entireFileText += each;
+		/**
+		 * removes any characters that cannot belong in a file name
+		 * @param string the string that needs to have its illegal characters removed (e.g. ", ?, & etc)
+		 * @return the string with all illegal characters replaced with the character "Q"
+		 */
+		private String sanitiseFileName(String dirtyString) {
+			//take care of illegal chars
+			String cleanString = dirtyString.replaceAll(" ", "_").replaceAll("[?\"#%&{}\\<>*/$!':@+`|=]", "Q").toLowerCase();
+			//truncate the file name if it is too long (note that the library in charge of writing to files throws a syntax exception if the file name exceeds approx 300 chars. For now I will set the upper limit of the article description component of the file names to 150 chars)
+			if(cleanString.length() > 150){
+				int amountRemoved = cleanString.length() - 150;
+				cleanString = cleanString.substring(0, 150);
+				cleanString += "(...truncated " + amountRemoved + " characters)";
 			}
-			//> at this point we have a full string with all 10 articles or watev at entireFileText
-			//use the text we read in to create an XML string
-			JSONObject jsonFileText = new JSONObject(entireFileText);
-			String XMLText = XML.toString(new JSONObject(jsonFileText), "root");
-			//> at this point the string at XMLTest only has the first json object as an xml compliant string
-			//write that XML string back into another file
-			//System.out.println("about to write the follwing xml string to a file: " + XMLText);
-			//System.out.println("parent path (which is where we will create the xml from the json) is: " + pathToFile.getParent().toString());
-			File XMLFile = new File(pathToFile.getParent().toString() + "\\xmlVersionWithRoot" + Math.random() + ".xml"); //TODO: the mathrandom here is just to differentiate the diff files that will be put into the same directory. ultimately 
-			//System.out.println(XMLFile);
-			java.io.FileWriter writer = new java.io.FileWriter(XMLFile); //this should just be whatever the title of the .json was
-			writer.write(XMLText);
-			writer.close();
-	
-		}*/
+			return cleanString;
+		}
+
 		
 
 		//BARELY TOUCHED INTERFACE REQUIRED METHODS/////////
@@ -185,6 +185,12 @@ public class JSONToXMLConverter {
 		@Override
 		public FileVisitResult postVisitDirectory(Object arg0, IOException arg1)
 				throws IOException {
+			//extremely crude way of measuring some progress
+			String str = arg0.toString();
+			if(str.substring(str.length() - 4, str.length() - 2).equals("18")){ //TODO: remove this and replace with something better
+				System.out.println("just finished processing folder: " + str);
+			}
+			///////////////////////////////////////////////
 			return java.nio.file.FileVisitResult.CONTINUE;
 		}
 

@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.json.*;
 
@@ -20,9 +21,10 @@ import org.json.*;
  */
 public class JSONToXMLConverter {
 	
-	private static final String START_DIRECTORY = "C:\\!2015SCHOLARSHIPSTUFF\\CompleteSampleCopy";
+	private static String START_DIRECTORY;
 
 	public static void main(String[] args){
+		START_DIRECTORY = args[0];
 		doFileWalk(new XmlConverterVisitor());//create the walker that will explore the tree of our json files
 	}
 
@@ -168,10 +170,10 @@ public class JSONToXMLConverter {
 		 */
 		private String sanitiseFileName(String dirtyString) {
 			//take care of illegal chars
-			String cleanString = dirtyString.replaceAll(" ", "_").replaceAll("[?\"#%&{}\\<>*/$!':@+`|=]", "Q").toLowerCase();
+			String cleanString = dirtyString.replaceAll(" ", "_").replaceAll("\n", "__").replaceAll("[?\"#%&{}\\<>*/$!':@+`|=]", "Q").toLowerCase();
 			//truncate the file name if it is too long (note that the library in charge of writing to files throws a syntax exception if the file name exceeds approx 300 chars. For now I will set the upper limit of the article description component of the file names to 150 chars)
 			if(cleanString.length() > 150){
-				int amountRemoved = cleanString.length() - 150;
+				int amountRemoved = cleanString.length() -150;
 				cleanString = cleanString.substring(0, 150);
 				cleanString += "(...truncated " + amountRemoved + " characters)";
 			}
@@ -185,9 +187,9 @@ public class JSONToXMLConverter {
 		@Override
 		public FileVisitResult postVisitDirectory(Object arg0, IOException arg1)
 				throws IOException {
-			//extremely crude way of measuring some progress
+			//extremely crude way of measuring the file visitors progress this is gross hack
 			String str = arg0.toString();
-			if(str.substring(str.length() - 4, str.length() - 2).equals("18")){ //TODO: remove this and replace with something better
+			if(str.substring(str.length() - 4, str.length() - 2).equals("18") || str.substring(str.length() - 4, str.length() - 2).equals("17") || str.substring(str.length() - 4, str.length() - 2).equals("19")){ //TODO: remove this and replace with something better
 				System.out.println("just finished processing folder: " + str);
 			}
 			///////////////////////////////////////////////

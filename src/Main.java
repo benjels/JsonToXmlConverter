@@ -12,22 +12,31 @@ import java.util.Arrays;
 
 import org.json.*;
 
+import gate.*;
+import gate.*;
+import gate.creole.*;
+import gate.util.*;
+import gate.util.persistence.PersistenceManager;
+import gate.corpora.RepositioningInfo;
+
 
 
 /**
- *Basically a script that sets the FileVisitor off on its journey
+ *just a little script that sets the file visitor on its journey
  * @author max
  *
  */
-public class JSONToXMLConverter {
+public class Main{
 	
 	private static String START_DIRECTORY;
 
 	public static void main(String[] args){
 		START_DIRECTORY = args[0];
-		doFileWalk(new XmlConverterVisitor());//create the walker that will explore the tree of our json files
+		doFileWalk(new TroveDataProcessor());//create the walker that will explore the tree of our json files
 	}
 
+	
+	
 	
 	
 	//TODO: ultimately add the starting directory as a prompted string input from the user but for now we sjust hardcode it
@@ -63,9 +72,9 @@ public class JSONToXMLConverter {
 	 * @author max
 	 *
 	 */
-	private static class XmlConverterVisitor implements FileVisitor{
+	private static class TroveDataProcessor implements FileVisitor{
 
-		
+		//TODO: should see what happens when eg invalid json supplied. program should just log the file that didnt work and continue. SHouldnt stop just because one file throws and io exception of json library throws JSONException etc
 		
 		@Override
 		public FileVisitResult visitFile(Object arg0, BasicFileAttributes arg1)
@@ -80,8 +89,7 @@ public class JSONToXMLConverter {
 			Path pathToFile = (Path)arg0;
 			if(pathToFile.toString().substring(pathToFile.toString().length() - 5, pathToFile.toString().length()).equals(".json")){
 				//so we have encountered a file that is purportedly .json, we should attempt to produce an xml file from each of the json objects that it contains
-		//	try{ //THIS IS COMMENTED OUT TO FIX BUGS WITH MALFORMED FILES
-				//convertToXml(pathToFile);
+			try{ 
 				//split the json file with several json article objects inside into several json objects. One for each "article"
 				ArrayList<JSONObject> JSONObjects = separateJSONObjectsInFile(pathToFile);
 				//for each of these JSONObjects, create an individual JSON file for it, and then create an XML file of that.
@@ -91,10 +99,10 @@ public class JSONToXMLConverter {
 					//create the XML file
 					createXMLFileFromJSONObject(each, pathToFile);
 				}
-		//	}catch(IOException e){ 
-		//		System.out.println("attempted to convert the following file to XML and incurred an io exception: " + pathToFile);
-		//		e.printStackTrace();
-		//	}
+			}catch(IOException e){ 
+				System.out.println("attempted to convert the following file to XML and incurred an io exception: " + pathToFile);
+				e.printStackTrace();
+			}
 			}else{
 			//	System.out.println("non json file encountered: " + arg0);
 			}
@@ -163,22 +171,6 @@ public class JSONToXMLConverter {
 			writer.close();
 		}
 		
-		/**
-		 * removes any characters that cannot belong in a file name
-		 * @param string the string that needs to have its illegal characters removed (e.g. ", ?, & etc)
-		 * @return the string with all illegal characters replaced with the character "Q"
-		 */
-		private String sanitiseFileName(String dirtyString) {
-			//take care of illegal chars
-			String cleanString = dirtyString.replaceAll(" ", "_").replaceAll("\n", "__").replaceAll("[?\"#%&{}\\<>*/$!':@+`|=]", "Q").toLowerCase();
-			//truncate the file name if it is too long (note that the library in charge of writing to files throws a syntax exception if the file name exceeds approx 300 chars. For now I will set the upper limit of the article description component of the file names to 150 chars)
-			if(cleanString.length() > 150){
-				int amountRemoved = cleanString.length() -150;
-				cleanString = cleanString.substring(0, 150);
-				cleanString += "(...truncated " + amountRemoved + " characters)";
-			}
-			return cleanString;
-		}
 
 		
 
@@ -209,5 +201,27 @@ public class JSONToXMLConverter {
 		}
 		
 		////////////////////////////////////////
+		
+
 	}
+
+
+
+	/**
+	 * removes any characters that cannot belong in a file name
+	 * @param string the string that needs to have its illegal characters removed (e.g. ", ?, & etc)
+	 * @return the string with all illegal characters replaced with the character "Q"
+	 */
+	public static String sanitiseFileName(String dirtyString) {
+		//take care of illegal chars
+		String cleanString = dirtyString.replaceAll(" ", "_").replaceAll("\n", "__").replaceAll("[?\"#%&{}\\<>*/$!':@+`|=]", "Q").toLowerCase();
+		//truncate the file name if it is too long (note that the library in charge of writing to files throws a syntax exception if the file name exceeds approx 300 chars. For now I will set the upper limit of the article description component of the file names to 150 chars)
+		if(cleanString.length() > 150){
+			int amountRemoved = cleanString.length() -150;
+			cleanString = cleanString.substring(0, 150);
+			cleanString += "(...truncated " + amountRemoved + " characters)";
+		}
+		return cleanString;
+	}
+
 }
